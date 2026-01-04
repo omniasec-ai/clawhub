@@ -50,6 +50,18 @@ describe('@clawdhub/schema', () => {
         'WellKnown',
       ),
     ).toEqual({ apiBase: 'https://example.convex.site', minCliVersion: '0.1.0' })
+
+    const combined = parseArk(
+      WellKnownConfigSchema,
+      {
+        apiBase: 'https://clawdhub.com',
+        registry: 'https://clawdhub.com',
+        authBase: 'https://clawdhub.com',
+      },
+      'WellKnown',
+    ) as unknown as Record<string, unknown>
+    expect(combined.apiBase).toBe('https://clawdhub.com')
+    expect(combined.registry).toBe('https://clawdhub.com')
   })
 
   it('throws labeled errors', () => {
