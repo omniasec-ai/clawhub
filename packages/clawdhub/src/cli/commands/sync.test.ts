@@ -6,7 +6,7 @@ import type { GlobalOpts } from '../types'
 const mockIntro = vi.fn()
 const mockOutro = vi.fn()
 const mockNote = vi.fn()
-const mockMultiselect = vi.fn<Promise<string[]>, [unknown?]>(async () => [])
+const mockMultiselect = vi.fn(async (_args?: unknown) => [] as string[])
 let interactive = false
 
 const defaultFindSkillFolders = async (root: string) => {
