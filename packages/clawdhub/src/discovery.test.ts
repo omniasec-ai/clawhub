@@ -33,4 +33,43 @@ describe('discovery', () => {
       minCliVersion: undefined,
     })
   })
+
+  it('parses apiBase config', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              apiBase: 'https://api.example.com',
+              authBase: 'https://auth.example.com',
+              minCliVersion: '1.2.3',
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
+      ) as unknown as typeof fetch,
+    )
+    await expect(discoverRegistryFromSite('https://example.com')).resolves.toEqual({
+      apiBase: 'https://api.example.com',
+      authBase: 'https://auth.example.com',
+      minCliVersion: '1.2.3',
+    })
+  })
+
+  it('returns null when apiBase is empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ apiBase: '' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      ) as unknown as typeof fetch,
+    )
+    await expect(discoverRegistryFromSite('https://example.com')).resolves.toBeNull()
+  })
 })

@@ -11,7 +11,7 @@ vi.mock('./skills', () => ({
 
 const { requireApiTokenUser } = await import('./lib/apiTokenAuth')
 const { publishVersionForUser } = await import('./skills')
-const { __handlers } = await import('./httpApi')
+const { __handlers, cliSkillDeleteHttp, cliSkillUndeleteHttp } = await import('./httpApi')
 const { hashSkillFiles } = await import('./lib/skills')
 
 function makeCtx(partial: Record<string, unknown>) {
@@ -53,6 +53,19 @@ describe('httpApi handlers', () => {
     expect(response.status).toBe(200)
     const json = await response.json()
     expect(json.results[0].slug).toBe('a')
+  })
+
+  it('searchSkillsHttp omits approvedOnly when false', async () => {
+    const runAction = vi.fn().mockResolvedValue([])
+    await __handlers.searchSkillsHandler(
+      makeCtx({ runAction }),
+      new Request('https://example.com/api/search?q=test&approvedOnly=false'),
+    )
+    expect(runAction).toHaveBeenCalledWith(expect.anything(), {
+      query: 'test',
+      limit: undefined,
+      approvedOnly: undefined,
+    })
   })
 
   it('getSkillHttp validates slug', async () => {
@@ -102,6 +115,30 @@ describe('httpApi handlers', () => {
     expect(json.skill.slug).toBe('demo')
     expect(json.latestVersion.version).toBe('1.0.0')
     expect(json.owner.handle).toBe('p')
+  })
+
+  it('getSkillHttp returns payload with null owner/latestVersion', async () => {
+    const runQuery = vi.fn().mockResolvedValue({
+      skill: {
+        slug: 'demo',
+        displayName: 'Demo',
+        summary: null,
+        tags: {},
+        stats: {},
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      latestVersion: null,
+      owner: null,
+    })
+    const response = await __handlers.getSkillHandler(
+      makeCtx({ runQuery }),
+      new Request('https://example.com/api/skill?slug=demo'),
+    )
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.latestVersion).toBeNull()
+    expect(json.owner).toBeNull()
   })
 
   it('resolveSkillVersionHttp validates hash', async () => {
@@ -184,6 +221,65 @@ describe('httpApi handlers', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })
     expect(runMutation).toHaveBeenCalledTimes(1)
+  })
+
+  it('cliTelemetrySyncHttp returns 400 on invalid payload', async () => {
+    vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'users:1' } as never)
+    const response = await __handlers.cliTelemetrySyncHandler(
+      makeCtx({ runMutation: vi.fn() }),
+      new Request('https://x/api/cli/telemetry/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roots: 'nope' }),
+      }),
+    )
+    expect(response.status).toBe(400)
+  })
+
+  it('cliTelemetrySyncHttp forwards skill versions when provided', async () => {
+    vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'users:1' } as never)
+    const runMutation = vi.fn().mockResolvedValue(null)
+    await __handlers.cliTelemetrySyncHandler(
+      makeCtx({ runMutation }),
+      new Request('https://x/api/cli/telemetry/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roots: [
+            {
+              rootId: 'abc',
+              label: '~/skills',
+              skills: [{ slug: 'weather', version: '1.0.0' }],
+            },
+          ],
+        }),
+      }),
+    )
+    expect(runMutation).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'users:1',
+      roots: [
+        { rootId: 'abc', label: '~/skills', skills: [{ slug: 'weather', version: '1.0.0' }] },
+      ],
+    })
+  })
+
+  it('cliTelemetrySyncHttp returns 400 on invalid json', async () => {
+    const request = new Request('https://x/api/cli/telemetry/sync', { method: 'POST', body: '{' })
+    const response = await __handlers.cliTelemetrySyncHandler(makeCtx({}), request)
+    expect(response.status).toBe(400)
+  })
+
+  it('cliTelemetrySyncHttp returns 401 when unauthorized', async () => {
+    vi.mocked(requireApiTokenUser).mockRejectedValueOnce(new Error('Unauthorized'))
+    const response = await __handlers.cliTelemetrySyncHandler(
+      makeCtx({}),
+      new Request('https://x/api/cli/telemetry/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roots: [] }),
+      }),
+    )
+    expect(response.status).toBe(401)
   })
 
   it('cliUploadUrlHttp returns uploadUrl', async () => {
@@ -314,6 +410,48 @@ describe('httpApi handlers', () => {
       slug: 'demo',
       deleted: false,
     })
+  })
+
+  it('cliSkillUndeleteHttp calls delete handler with deleted=false', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'user1' } as never)
+    const runMutation = vi.fn().mockResolvedValue({ ok: true })
+    const response = await cliSkillUndeleteHttp(
+      makeCtx({ runMutation }),
+      new Request('https://x/api/cli/skill/undelete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: 'demo' }),
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(runMutation).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'user1',
+      slug: 'demo',
+      deleted: false,
+    })
+    warnSpy.mockRestore()
+  })
+
+  it('cliSkillDeleteHttp calls delete handler with deleted=true', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'user1' } as never)
+    const runMutation = vi.fn().mockResolvedValue({ ok: true })
+    const response = await cliSkillDeleteHttp(
+      makeCtx({ runMutation }),
+      new Request('https://x/api/cli/skill/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: 'demo' }),
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(runMutation).toHaveBeenCalledWith(expect.anything(), {
+      userId: 'user1',
+      slug: 'demo',
+      deleted: true,
+    })
+    warnSpy.mockRestore()
   })
 
   it('cliSkillDeleteHandler returns 400 on invalid json', async () => {

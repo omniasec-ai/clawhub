@@ -25,6 +25,29 @@ describe('httpApi', () => {
     expect(parsed.files[0]?.path).toBe('SKILL.md')
   })
 
+  it('normalizes optional fields in publish payload', () => {
+    const parsed = __test.parsePublishBody({
+      slug: 'cool-skill',
+      displayName: 'Cool Skill',
+      version: '1.2.3',
+      changelog: '',
+      tags: [],
+      forkOf: { slug: 'base-skill' },
+      files: [
+        {
+          path: 'SKILL.md',
+          size: 5,
+          storageId: 'fakeStorageId',
+          sha256: 'abcd',
+          contentType: 'text/markdown',
+        },
+      ],
+    })
+    expect(parsed.tags).toBeUndefined()
+    expect(parsed.source).toBeUndefined()
+    expect(parsed.forkOf).toEqual({ slug: 'base-skill', version: undefined })
+  })
+
   it('rejects invalid publish payloads', () => {
     expect(() => __test.parsePublishBody(null)).toThrow(/Publish payload/i)
     expect(() =>

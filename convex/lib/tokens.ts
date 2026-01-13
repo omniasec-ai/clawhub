@@ -43,3 +43,9 @@ function toBase64(bytes: Uint8Array) {
   }
   return output
 }
+
+export const __test = {
+  toHex,
+  toBase64,
+  toBase64Url,
+}
