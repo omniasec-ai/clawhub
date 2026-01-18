@@ -50,9 +50,7 @@ async function main() {
     )
   }
 
-  console.log(
-    `peer ok: @auth/core ${installedVersion} satisfies @convex-dev/auth (${peerRange})`,
-  )
+  console.log(`peer ok: @auth/core ${installedVersion} satisfies @convex-dev/auth (${peerRange})`)
 }
 
 await main()
