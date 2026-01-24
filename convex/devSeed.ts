@@ -1,5 +1,6 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
+import type { ActionCtx } from './_generated/server'
 import { internalAction, internalMutation } from './_generated/server'
 import { EMBEDDING_DIMENSIONS } from './lib/embeddings'
 import { parseClawdisMetadata, parseFrontmatter } from './lib/skills'
@@ -12,6 +13,17 @@ type SeedSkillSpec = {
   metadata: Record<string, unknown>
   rawSkillMd: string
 }
+
+type SeedActionArgs = {
+  reset?: boolean
+}
+
+type SeedActionResult = {
+  ok: true
+  results: Array<Record<string, unknown> & { slug: string }>
+}
+
+type SeedMutationResult = Record<string, unknown>
 
 const SEED_SKILLS: SeedSkillSpec[] = [
   {
@@ -237,53 +249,19 @@ function injectMetadata(rawSkillMd: string, metadata: Record<string, unknown>) {
   )}${rawSkillMd.slice(frontmatterEnd)}`
 }
 
-export const seedNixSkills = internalAction({
-  args: {
-    reset: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const results = []
+async function seedNixSkillsHandler(
+  ctx: ActionCtx,
+  args: SeedActionArgs,
+): Promise<SeedActionResult> {
+  const results: Array<Record<string, unknown> & { slug: string }> = []
 
-    for (const spec of SEED_SKILLS) {
-      const skillMd = injectMetadata(spec.rawSkillMd, spec.metadata)
-      const frontmatter = parseFrontmatter(skillMd)
-      const clawdis = parseClawdisMetadata(frontmatter)
-      const storageId = await ctx.storage.store(new Blob([skillMd], { type: 'text/markdown' }))
-
-      const result = await ctx.runMutation(internal.devSeed.seedSkillMutation, {
-        reset: args.reset,
-        storageId,
-        metadata: spec.metadata,
-        frontmatter,
-        clawdis,
-        skillMd,
-        slug: spec.slug,
-        displayName: spec.displayName,
-        summary: spec.summary,
-        version: spec.version,
-      })
-
-      results.push({ slug: spec.slug, ...result })
-    }
-
-    return { ok: true, results }
-  },
-})
-
-export const seedPadelSkill = internalAction({
-  args: {
-    reset: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const spec = SEED_SKILLS.find((entry) => entry.slug === 'padel')
-    if (!spec) throw new Error('padel seed spec missing')
-
+  for (const spec of SEED_SKILLS) {
     const skillMd = injectMetadata(spec.rawSkillMd, spec.metadata)
     const frontmatter = parseFrontmatter(skillMd)
     const clawdis = parseClawdisMetadata(frontmatter)
     const storageId = await ctx.storage.store(new Blob([skillMd], { type: 'text/markdown' }))
 
-    return ctx.runMutation(internal.devSeed.seedSkillMutation, {
+    const result: SeedMutationResult = await ctx.runMutation(internal.devSeed.seedSkillMutation, {
       reset: args.reset,
       storageId,
       metadata: spec.metadata,
@@ -295,7 +273,51 @@ export const seedPadelSkill = internalAction({
       summary: spec.summary,
       version: spec.version,
     })
+
+    results.push({ slug: spec.slug, ...result })
+  }
+
+  return { ok: true, results }
+}
+
+export const seedNixSkills: ReturnType<typeof internalAction> = internalAction({
+  args: {
+    reset: v.optional(v.boolean()),
   },
+  handler: seedNixSkillsHandler,
+})
+
+async function seedPadelSkillHandler(
+  ctx: ActionCtx,
+  args: SeedActionArgs,
+): Promise<SeedMutationResult> {
+  const spec = SEED_SKILLS.find((entry) => entry.slug === 'padel')
+  if (!spec) throw new Error('padel seed spec missing')
+
+  const skillMd = injectMetadata(spec.rawSkillMd, spec.metadata)
+  const frontmatter = parseFrontmatter(skillMd)
+  const clawdis = parseClawdisMetadata(frontmatter)
+  const storageId = await ctx.storage.store(new Blob([skillMd], { type: 'text/markdown' }))
+
+  return (await ctx.runMutation(internal.devSeed.seedSkillMutation, {
+    reset: args.reset,
+    storageId,
+    metadata: spec.metadata,
+    frontmatter,
+    clawdis,
+    skillMd,
+    slug: spec.slug,
+    displayName: spec.displayName,
+    summary: spec.summary,
+    version: spec.version,
+  })) as SeedMutationResult
+}
+
+export const seedPadelSkill: ReturnType<typeof internalAction> = internalAction({
+  args: {
+    reset: v.optional(v.boolean()),
+  },
+  handler: seedPadelSkillHandler,
 })
 
 export const seedSkillMutation = internalMutation({

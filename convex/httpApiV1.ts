@@ -44,6 +44,9 @@ type ListSkillsResult = {
   nextCursor: string | null
 }
 
+type SkillFile = Doc<'skillVersions'>['files'][number]
+type SoulFile = Doc<'soulVersions'>['files'][number]
+
 type GetBySlugResult = {
   skill: {
     _id: Id<'skills'>
@@ -318,7 +321,7 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
           createdAt: version.createdAt,
           changelog: version.changelog,
           changelogSource: version.changelogSource ?? null,
-          files: version.files.map((file) => ({
+          files: version.files.map((file: SkillFile) => ({
             path: file.path,
             size: file.size,
             sha256: file.sha256,
@@ -784,8 +787,8 @@ function parseListSort(value: string | null): SkillListSort {
 }
 
 async function sha256Hex(bytes: Uint8Array) {
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-  const digest = await crypto.subtle.digest('SHA-256', buffer)
+  const data = new Uint8Array(bytes)
+  const digest = await crypto.subtle.digest('SHA-256', data)
   return toHex(new Uint8Array(digest))
 }
 
@@ -925,7 +928,7 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
           createdAt: version.createdAt,
           changelog: version.changelog,
           changelogSource: version.changelogSource ?? null,
-          files: version.files.map((file) => ({
+          files: version.files.map((file: SoulFile) => ({
             path: file.path,
             size: file.size,
             sha256: file.sha256,

@@ -1,5 +1,6 @@
 /* @vitest-environment jsdom */
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SkillsIndex } from '../routes/skills/index'
@@ -14,7 +15,7 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => navigateMock,
     useSearch: () => searchMock,
   }),
-  Link: (props: { children: unknown }) => <a href="/">{props.children}</a>,
+  Link: (props: { children: ReactNode }) => <a href="/">{props.children}</a>,
 }))
 
 vi.mock('convex/react', () => ({

@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
+import type { ActionCtx } from './_generated/server'
 import { internalAction, internalMutation, internalQuery } from './_generated/server'
 
 const DEFAULT_BATCH_SIZE = 200
@@ -42,6 +43,25 @@ export const backfillSkillStatFieldsInternal = internalMutation({
 type BackfillState = {
   cursor: string | null
   doneAt?: number
+}
+
+type BackfillActionArgs = {
+  batchSize?: number
+  maxBatches?: number
+  resetCursor?: boolean
+}
+
+type BackfillStats = {
+  scanned: number
+  patched: number
+  batches: number
+}
+
+type BackfillActionResult = {
+  ok: true
+  isDone: boolean
+  cursor: string | null
+  stats: BackfillStats
 }
 
 export const getSkillStatBackfillStateInternal = internalQuery({
@@ -87,68 +107,73 @@ export const setSkillStatBackfillStateInternal = internalMutation({
   },
 })
 
-export const runSkillStatBackfillInternal = internalAction({
+async function runSkillStatBackfillInternalHandler(
+  ctx: ActionCtx,
+  args: BackfillActionArgs,
+): Promise<BackfillActionResult> {
+  const batchSize = clampInt(args.batchSize ?? DEFAULT_BATCH_SIZE, 1, MAX_BATCH_SIZE)
+  const maxBatches = clampInt(args.maxBatches ?? DEFAULT_MAX_BATCHES, 1, MAX_MAX_BATCHES)
+
+  if (args.resetCursor) {
+    await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
+      cursor: undefined,
+      doneAt: undefined,
+    })
+  }
+
+  const state = (await ctx.runQuery(
+    internal.statsMaintenance.getSkillStatBackfillStateInternal,
+    {},
+  )) as BackfillState
+  if (state.doneAt && !args.resetCursor) {
+    return {
+      ok: true,
+      isDone: true,
+      cursor: null,
+      stats: { scanned: 0, patched: 0, batches: 0 },
+    }
+  }
+
+  let cursor: string | null = state.cursor ?? null
+  const stats: BackfillStats = { scanned: 0, patched: 0, batches: 0 }
+
+  for (let i = 0; i < maxBatches; i += 1) {
+    const result = (await ctx.runMutation(
+      internal.statsMaintenance.backfillSkillStatFieldsInternal,
+      {
+        cursor: cursor ?? undefined,
+        batchSize,
+      },
+    )) as { scanned: number; patched: number; cursor: string | null; isDone: boolean }
+    stats.scanned += result.scanned
+    stats.patched += result.patched
+    stats.batches += 1
+    cursor = result.cursor
+
+    if (result.isDone) {
+      await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
+        cursor: undefined,
+        doneAt: Date.now(),
+      })
+      return { ok: true, isDone: true, cursor: null, stats }
+    }
+
+    await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
+      cursor: cursor ?? undefined,
+      doneAt: undefined,
+    })
+  }
+
+  return { ok: true, isDone: false, cursor, stats }
+}
+
+export const runSkillStatBackfillInternal: ReturnType<typeof internalAction> = internalAction({
   args: {
     batchSize: v.optional(v.number()),
     maxBatches: v.optional(v.number()),
     resetCursor: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
-    const batchSize = clampInt(args.batchSize ?? DEFAULT_BATCH_SIZE, 1, MAX_BATCH_SIZE)
-    const maxBatches = clampInt(args.maxBatches ?? DEFAULT_MAX_BATCHES, 1, MAX_MAX_BATCHES)
-
-    if (args.resetCursor) {
-      await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
-        cursor: undefined,
-        doneAt: undefined,
-      })
-    }
-
-    const state = await ctx.runQuery(
-      internal.statsMaintenance.getSkillStatBackfillStateInternal,
-      {},
-    )
-    if (state.doneAt && !args.resetCursor) {
-      return {
-        ok: true as const,
-        isDone: true,
-        cursor: null,
-        stats: { scanned: 0, patched: 0, batches: 0 },
-      }
-    }
-
-    let cursor = state.cursor ?? null
-    const stats = { scanned: 0, patched: 0, batches: 0 }
-
-    for (let i = 0; i < maxBatches; i += 1) {
-      const result = await ctx.runMutation(
-        internal.statsMaintenance.backfillSkillStatFieldsInternal,
-        {
-          cursor: cursor ?? undefined,
-          batchSize,
-        },
-      )
-      stats.scanned += result.scanned
-      stats.patched += result.patched
-      stats.batches += 1
-      cursor = result.cursor
-
-      if (result.isDone) {
-        await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
-          cursor: undefined,
-          doneAt: Date.now(),
-        })
-        return { ok: true as const, isDone: true, cursor: null, stats }
-      }
-
-      await ctx.runMutation(internal.statsMaintenance.setSkillStatBackfillStateInternal, {
-        cursor: cursor ?? undefined,
-        doneAt: undefined,
-      })
-    }
-
-    return { ok: true as const, isDone: false, cursor, stats }
-  },
+  handler: runSkillStatBackfillInternalHandler,
 })
 
 function buildSkillStatPatch(skill: Doc<'skills'>) {

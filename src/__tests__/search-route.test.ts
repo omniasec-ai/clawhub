@@ -9,7 +9,12 @@ import { Route } from '../routes/search'
 
 describe('search route', () => {
   it('redirects to the skills index', () => {
-    const beforeLoad = Route.__config.beforeLoad as (args: {
+    const route = Route as unknown as {
+      __config: {
+        beforeLoad?: (args: { search: { q?: string; highlighted?: boolean } }) => void
+      }
+    }
+    const beforeLoad = route.__config.beforeLoad as (args: {
       search: { q?: string; highlighted?: boolean }
     }) => void
     let thrown: unknown
@@ -33,7 +38,12 @@ describe('search route', () => {
   })
 
   it('redirects to the skills index without query', () => {
-    const beforeLoad = Route.__config.beforeLoad as (args: {
+    const route = Route as unknown as {
+      __config: {
+        beforeLoad?: (args: { search: { q?: string; highlighted?: boolean } }) => void
+      }
+    }
+    const beforeLoad = route.__config.beforeLoad as (args: {
       search: { q?: string; highlighted?: boolean }
     }) => void
     let thrown: unknown

@@ -15,6 +15,8 @@ type SkillDetailPageProps = {
   redirectToCanonical?: boolean
 }
 
+type SkillFile = Doc<'skillVersions'>['files'][number]
+
 export function SkillDetailPage({
   slug,
   canonicalOwner,
@@ -122,7 +124,7 @@ export function SkillDetailPage({
     if (!readme) return null
     return stripFrontmatter(readme)
   }, [readme])
-  const latestFiles = latestVersion?.files ?? []
+  const latestFiles: SkillFile[] = latestVersion?.files ?? []
 
   useEffect(() => {
     if (!latestVersion) return

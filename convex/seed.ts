@@ -242,7 +242,8 @@ export const ensureSeedUserInternal = internalMutation({
 })
 
 async function sha256Hex(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const data = new Uint8Array(bytes)
+  const digest = await crypto.subtle.digest('SHA-256', data)
   return toHex(new Uint8Array(digest))
 }
 

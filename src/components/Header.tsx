@@ -59,22 +59,27 @@ export default function Header() {
         </Link>
         <nav className="nav-links">
           {isSoulMode ? <a href={clawdHubUrl}>ClawdHub</a> : null}
-          <Link
-            to={isSoulMode ? '/souls' : '/skills'}
-            search={
-              isSoulMode
-                ? undefined
-                : {
-                    q: undefined,
-                    sort: undefined,
-                    dir: undefined,
-                    highlighted: undefined,
-                    view: undefined,
-                  }
-            }
-          >
-            {isSoulMode ? 'Souls' : 'Skills'}
-          </Link>
+          {isSoulMode ? (
+            <Link
+              to="/souls"
+              search={{ q: undefined, sort: undefined, dir: undefined, view: undefined }}
+            >
+              Souls
+            </Link>
+          ) : (
+            <Link
+              to="/skills"
+              search={{
+                q: undefined,
+                sort: undefined,
+                dir: undefined,
+                highlighted: undefined,
+                view: undefined,
+              }}
+            >
+              Skills
+            </Link>
+          )}
           <Link to="/upload" search={{ updateSlug: undefined }}>
             Upload
           </Link>
@@ -100,22 +105,27 @@ export default function Header() {
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem asChild>
-                  <Link
-                    to={isSoulMode ? '/souls' : '/skills'}
-                    search={
-                      isSoulMode
-                        ? undefined
-                        : {
-                            q: undefined,
-                            sort: undefined,
-                            dir: undefined,
-                            highlighted: undefined,
-                            view: undefined,
-                          }
-                    }
-                  >
-                    {isSoulMode ? 'Souls' : 'Skills'}
-                  </Link>
+                  {isSoulMode ? (
+                    <Link
+                      to="/souls"
+                      search={{ q: undefined, sort: undefined, dir: undefined, view: undefined }}
+                    >
+                      Souls
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/skills"
+                      search={{
+                        q: undefined,
+                        sort: undefined,
+                        dir: undefined,
+                        highlighted: undefined,
+                        view: undefined,
+                      }}
+                    >
+                      Skills
+                    </Link>
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/upload" search={{ updateSlug: undefined }}>

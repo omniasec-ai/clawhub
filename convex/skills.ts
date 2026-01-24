@@ -165,9 +165,10 @@ export const listWithLatest = query({
         .order('desc')
         .take(takeLimit)
     } else if (args.ownerUserId) {
+      const ownerUserId = args.ownerUserId
       entries = await ctx.db
         .query('skills')
-        .withIndex('by_owner', (q) => q.eq('ownerUserId', args.ownerUserId))
+        .withIndex('by_owner', (q) => q.eq('ownerUserId', ownerUserId))
         .order('desc')
         .take(takeLimit)
     } else {

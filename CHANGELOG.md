@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- Web: show published skills on user profiles (thanks @njoylab, #20).
+
 ### Fixed
 - Registry: drop missing skills during search hydration (thanks @aaronn, #28).
 - CLI: use path-based skill metadata lookup for updates (thanks @daveonkels, #22).

@@ -11,7 +11,7 @@ vi.mock('./skills', () => ({
 
 const { requireApiTokenUser } = await import('./lib/apiTokenAuth')
 const { publishVersionForUser } = await import('./skills')
-const { __handlers, cliSkillDeleteHttp, cliSkillUndeleteHttp } = await import('./httpApi')
+const { __handlers } = await import('./httpApi')
 const { hashSkillFiles } = await import('./lib/skills')
 
 function makeCtx(partial: Record<string, unknown>) {
@@ -416,13 +416,14 @@ describe('httpApi handlers', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'user1' } as never)
     const runMutation = vi.fn().mockResolvedValue({ ok: true })
-    const response = await cliSkillUndeleteHttp(
+    const response = await __handlers.cliSkillDeleteHandler(
       makeCtx({ runMutation }),
       new Request('https://x/api/cli/skill/undelete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug: 'demo' }),
       }),
+      false,
     )
     expect(response.status).toBe(200)
     expect(runMutation).toHaveBeenCalledWith(expect.anything(), {
@@ -437,13 +438,14 @@ describe('httpApi handlers', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.mocked(requireApiTokenUser).mockResolvedValueOnce({ userId: 'user1' } as never)
     const runMutation = vi.fn().mockResolvedValue({ ok: true })
-    const response = await cliSkillDeleteHttp(
+    const response = await __handlers.cliSkillDeleteHandler(
       makeCtx({ runMutation }),
       new Request('https://x/api/cli/skill/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ slug: 'demo' }),
       }),
+      true,
     )
     expect(response.status).toBe(200)
     expect(runMutation).toHaveBeenCalledWith(expect.anything(), {

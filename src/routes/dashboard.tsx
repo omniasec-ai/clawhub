@@ -10,7 +10,10 @@ export const Route = createFileRoute('/dashboard')({
 
 function Dashboard() {
   const me = useQuery(api.users.me)
-  const mySkills = useQuery(api.skills.list, me?._id ? { ownerUserId: me._id, limit: 100 } : 'skip')
+  const mySkills = useQuery(
+    api.skills.list,
+    me?._id ? { ownerUserId: me._id, limit: 100 } : 'skip',
+  ) as Doc<'skills'>[] | undefined
 
   if (!me) {
     return (
@@ -29,7 +32,7 @@ function Dashboard() {
         <h1 className="section-title" style={{ margin: 0 }}>
           My Skills
         </h1>
-        <Link to="/upload" className="btn btn-primary">
+        <Link to="/upload" search={{ updateSlug: undefined }} className="btn btn-primary">
           <Plus className="h-4 w-4" aria-hidden="true" />
           Upload New Skill
         </Link>
@@ -40,7 +43,7 @@ function Dashboard() {
           <Package className="dashboard-empty-icon" aria-hidden="true" />
           <h2>No skills yet</h2>
           <p>Upload your first skill to share it with the community.</p>
-          <Link to="/upload" className="btn btn-primary">
+          <Link to="/upload" search={{ updateSlug: undefined }} className="btn btn-primary">
             <Upload className="h-4 w-4" aria-hidden="true" />
             Upload a Skill
           </Link>

@@ -377,7 +377,7 @@ export const insertVersion = internalMutation({
       .withIndex('by_slug', (q) => q.eq('slug', args.slug))
       .order('desc')
       .take(2)
-    let soul = soulMatches[0] ?? null
+    let soul: Doc<'souls'> | null = soulMatches[0] ?? null
 
     if (soul && soul.ownerUserId !== userId) {
       throw new Error('Only the owner can publish updates')
