@@ -46,12 +46,21 @@ export const scanWithVirusTotal = internalAction({
       return
     }
 
-    // Build the ZIP in memory (replicating downloads.ts logic)
-    const zipData: Record<string, Uint8Array> = {}
-    for (const file of version.files) {
+    // Build the ZIP in memory with deterministic settings 
+    // Sort files alphabetically by path for consistent order
+    const sortedFiles = [...version.files].sort((a, b) => a.path.localeCompare(b.path))
+
+    // Use fixed timestamp (Jan 1, 1980 00:00:00 UTC - valid ZIP date range)
+    const fixedDate = new Date('1980-01-01T00:00:00Z')
+
+    type ZipInput = Record<string, Uint8Array | [Uint8Array, { mtime?: Date }]>
+    const zipData: ZipInput = {}
+
+    for (const file of sortedFiles) {
       const content = await ctx.storage.get(file.storageId)
       if (content) {
-        zipData[file.path] = new Uint8Array(await content.arrayBuffer())
+        const buffer = new Uint8Array(await content.arrayBuffer())
+        zipData[file.path] = [buffer, { mtime: fixedDate }]
       }
     }
 
@@ -60,7 +69,8 @@ export const scanWithVirusTotal = internalAction({
       return
     }
 
-    const zipped = zipSync(zipData)
+    // Use fixed compression level (same as downloads.ts)
+    const zipped = zipSync(zipData, { level: 6 })
     const zipArray = Uint8Array.from(zipped)
 
     // Calculate SHA-256 of the ZIP
