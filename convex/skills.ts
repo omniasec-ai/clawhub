@@ -73,7 +73,8 @@ const HARD_DELETE_PHASES = [
 type HardDeletePhase = (typeof HARD_DELETE_PHASES)[number]
 
 function isHardDeletePhase(value: string | undefined): value is HardDeletePhase {
-  return typeof value === 'string' && (HARD_DELETE_PHASES as readonly string[]).includes(value)
+  if (!value) return false
+  return (HARD_DELETE_PHASES as readonly string[]).includes(value)
 }
 
 async function scheduleHardDelete(

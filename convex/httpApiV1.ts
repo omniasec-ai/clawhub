@@ -596,6 +596,10 @@ async function usersPostRouterV1Handler(ctx: ActionCtx, request: Request) {
     }
   }
 
+  if (!role) {
+    return text('Invalid role', 400, rate.headers)
+  }
+
   try {
     const validRole = role as 'admin' | 'moderator' | 'user';
     const result = await ctx.runMutation(internal.users.setRoleInternal, {
