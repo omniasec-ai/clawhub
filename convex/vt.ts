@@ -61,12 +61,17 @@ export const fetchResults = action({
       )
 
       const stats = data.data.attributes.last_analysis_stats
-      const status =
-        stats && stats.malicious > 0
-          ? 'malicious'
-          : aiResult?.verdict.toLowerCase() === 'malicious'
-            ? 'malicious'
-            : 'clean'
+      let status = 'pending'
+
+      if (stats && stats.malicious > 0) {
+        status = 'malicious'
+      } else if (stats && stats.suspicious > 0) {
+        status = 'suspicious'
+      } else if (aiResult?.verdict) {
+        status = aiResult.verdict.toLowerCase()
+      } else if (stats && stats.undetected > 0) {
+        status = 'clean'
+      }
 
       return {
         status,
@@ -112,13 +117,13 @@ export const scanWithVirusTotal = internalAction({
     })
     const owner = skill
       ? await ctx.runQuery(internal.users.getByIdInternal, {
-        userId: skill.ownerUserId,
-      })
+          userId: skill.ownerUserId,
+        })
       : null
     const versions = skill
       ? await ctx.runQuery(internal.skills.listVersionsInternal, {
-        skillId: skill._id,
-      })
+          skillId: skill._id,
+        })
       : []
 
     // Helper to get commit URL or placeholder

@@ -48,6 +48,8 @@ function getScanStatusInfo(status: string) {
       return { label: 'Malicious', className: 'scan-status-malicious' }
     case 'suspicious':
       return { label: 'Suspicious', className: 'scan-status-suspicious' }
+    case 'loading':
+      return { label: 'Loading...', className: 'scan-status-pending' }
     case 'pending':
     case 'not_found':
       return { label: 'Pending', className: 'scan-status-pending' }
@@ -106,15 +108,29 @@ function SecurityScanResults({
 
   if (!sha256hash) return null
 
-  const status = loading ? 'pending' : (result?.status ?? 'pending')
+  const status = loading ? 'loading' : (result?.status ?? 'pending')
   const url = result?.url
   const statusInfo = getScanStatusInfo(status)
+
+  // Use dynamic label if no AI verdict but stats are available
+  let displayLabel = statusInfo.label
+  if (!loading && result?.metadata) {
+    const metadata = result.metadata as {
+      aiVerdict?: string
+      stats?: Record<string, number>
+    }
+    if (!metadata.aiVerdict && metadata.stats) {
+      const stats = metadata.stats
+      const total = Object.values(stats).reduce((acc, val) => acc + (val || 0), 0)
+      displayLabel = `${stats.malicious || 0}/${total} engines`
+    }
+  }
 
   if (variant === 'badge') {
     return (
       <div className="version-scan-badge">
         <VirusTotalIcon className="version-scan-icon version-scan-icon-vt" />
-        <span className={statusInfo.className}>{statusInfo.label}</span>
+        <span className={statusInfo.className}>{displayLabel}</span>
         {url ? (
           <a
             href={url}
@@ -139,7 +155,7 @@ function SecurityScanResults({
             <VirusTotalIcon className="scan-result-icon scan-result-icon-vt" />
             <span className="scan-result-scanner-name">VirusTotal</span>
           </div>
-          <div className={`scan-result-status ${statusInfo.className}`}>{statusInfo.label}</div>
+          <div className={`scan-result-status ${statusInfo.className}`}>{displayLabel}</div>
           {url ? (
             <a href={url} target="_blank" rel="noopener noreferrer" className="scan-result-link">
               View report →

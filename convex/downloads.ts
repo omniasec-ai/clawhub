@@ -54,6 +54,35 @@ export const downloadZip = httpAction(async (ctx, request) => {
     zipData[file.path] = [buffer, { mtime: fixedDate }]
   }
 
+  // Add _meta.json to the ZIP to match the hash in VirusTotal
+  const owner = await ctx.runQuery(api.users.getById, { userId: skill.ownerUserId })
+  const versions = await ctx.runQuery(api.skills.listVersions, { skillId: skill._id })
+
+  const getCommit = () => 'https://github.com/clawdbot/skills'
+
+  const metaFile = {
+    owner: owner?.handle || owner?.displayName || 'unknown',
+    slug: skill.slug,
+    displayName: skill.displayName,
+    latest: {
+      version: version.version,
+      publishedAt: version.createdAt,
+      commit: getCommit(),
+    },
+    history: versions
+      .filter((v: { version: string }) => v.version !== version.version)
+      .map((v: any) => ({
+        version: v.version,
+        publishedAt: v.createdAt,
+        commit: getCommit(),
+      }))
+      .sort(
+        (a: { publishedAt: number }, b: { publishedAt: number }) => b.publishedAt - a.publishedAt,
+      ),
+  }
+  const metaContent = new TextEncoder().encode(JSON.stringify(metaFile, null, 2))
+  zipData['_meta.json'] = [metaContent, { mtime: fixedDate }]
+
   const zipped = zipSync(zipData, { level: 6 })
   const zipArray = Uint8Array.from(zipped)
   const zipBlob = new Blob([zipArray], { type: 'application/zip' })
