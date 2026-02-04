@@ -188,6 +188,15 @@ export async function publishVersionForUser(
       console.error('GitHub backup scheduling failed', error)
     })
 
+  // Schedule VirusTotal scan for new skills (if VT_API_KEY is configured)
+  void ctx.scheduler
+    .runAfter(0, internal.vt.scanWithVirusTotal, {
+      versionId: publishResult.versionId,
+    })
+    .catch((error) => {
+      console.error('VirusTotal scan scheduling failed', error)
+    })
+
   void schedulePublishWebhook(ctx, {
     slug,
     version,

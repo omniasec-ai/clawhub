@@ -73,7 +73,7 @@ const HARD_DELETE_PHASES = [
 type HardDeletePhase = (typeof HARD_DELETE_PHASES)[number]
 
 function isHardDeletePhase(value: string | undefined): value is HardDeletePhase {
-  return Boolean(value) && (HARD_DELETE_PHASES as readonly string[]).includes(value)
+  return typeof value === 'string' && (HARD_DELETE_PHASES as readonly string[]).includes(value)
 }
 
 async function scheduleHardDelete(
@@ -502,29 +502,29 @@ export const getBySlug = query({
       owner,
       forkOf: forkOfSkill
         ? {
-            kind: skill.forkOf?.kind ?? 'fork',
-            version: skill.forkOf?.version ?? null,
-            skill: {
-              slug: forkOfSkill.slug,
-              displayName: forkOfSkill.displayName,
-            },
-            owner: {
-              handle: forkOfOwner?.handle ?? forkOfOwner?.name ?? null,
-              userId: forkOfOwner?._id ?? null,
-            },
-          }
+          kind: skill.forkOf?.kind ?? 'fork',
+          version: skill.forkOf?.version ?? null,
+          skill: {
+            slug: forkOfSkill.slug,
+            displayName: forkOfSkill.displayName,
+          },
+          owner: {
+            handle: forkOfOwner?.handle ?? forkOfOwner?.name ?? null,
+            userId: forkOfOwner?._id ?? null,
+          },
+        }
         : null,
       canonical: canonicalSkill
         ? {
-            skill: {
-              slug: canonicalSkill.slug,
-              displayName: canonicalSkill.displayName,
-            },
-            owner: {
-              handle: canonicalOwner?.handle ?? canonicalOwner?.name ?? null,
-              userId: canonicalOwner?._id ?? null,
-            },
-          }
+          skill: {
+            slug: canonicalSkill.slug,
+            displayName: canonicalSkill.displayName,
+          },
+          owner: {
+            handle: canonicalOwner?.handle ?? canonicalOwner?.name ?? null,
+            userId: canonicalOwner?._id ?? null,
+          },
+        }
         : null,
     }
   },
@@ -558,29 +558,29 @@ export const getBySlugForStaff = query({
       owner,
       forkOf: forkOfSkill
         ? {
-            kind: skill.forkOf?.kind ?? 'fork',
-            version: skill.forkOf?.version ?? null,
-            skill: {
-              slug: forkOfSkill.slug,
-              displayName: forkOfSkill.displayName,
-            },
-            owner: {
-              handle: forkOfOwner?.handle ?? forkOfOwner?.name ?? null,
-              userId: forkOfOwner?._id ?? null,
-            },
-          }
+          kind: skill.forkOf?.kind ?? 'fork',
+          version: skill.forkOf?.version ?? null,
+          skill: {
+            slug: forkOfSkill.slug,
+            displayName: forkOfSkill.displayName,
+          },
+          owner: {
+            handle: forkOfOwner?.handle ?? forkOfOwner?.name ?? null,
+            userId: forkOfOwner?._id ?? null,
+          },
+        }
         : null,
       canonical: canonicalSkill
         ? {
-            skill: {
-              slug: canonicalSkill.slug,
-              displayName: canonicalSkill.displayName,
-            },
-            owner: {
-              handle: canonicalOwner?.handle ?? canonicalOwner?.name ?? null,
-              userId: canonicalOwner?._id ?? null,
-            },
-          }
+          skill: {
+            slug: canonicalSkill.slug,
+            displayName: canonicalSkill.displayName,
+          },
+          owner: {
+            handle: canonicalOwner?.handle ?? canonicalOwner?.name ?? null,
+            userId: canonicalOwner?._id ?? null,
+          },
+        }
         : null,
     }
   },
@@ -682,8 +682,8 @@ export const listWithLatest = query({
     const ordered =
       args.batch === 'highlighted'
         ? [...withBadges].sort(
-            (a, b) => (b.badges?.highlighted?.at ?? 0) - (a.badges?.highlighted?.at ?? 0),
-          )
+          (a, b) => (b.badges?.highlighted?.at ?? 0) - (a.badges?.highlighted?.at ?? 0),
+        )
         : withBadges
     const limited = ordered.slice(0, limit)
     const items = await Promise.all(
@@ -1703,11 +1703,11 @@ export const insertVersion = internalMutation({
       let canonicalSkillId: Id<'skills'> | undefined
       let forkOf:
         | {
-            skillId: Id<'skills'>
-            kind: 'fork' | 'duplicate'
-            version?: string
-            at: number
-          }
+          skillId: Id<'skills'>
+          kind: 'fork' | 'duplicate'
+          version?: string
+          at: number
+        }
         | undefined
 
       if (forkOfSlug) {
@@ -1758,7 +1758,8 @@ export const insertVersion = internalMutation({
           official: undefined,
           deprecated: undefined,
         },
-        moderationStatus: 'active',
+        moderationStatus: 'hidden',
+        moderationReason: 'pending.scan',
         moderationFlags: moderationFlags.length ? moderationFlags : undefined,
         reportCount: 0,
         lastReportedAt: undefined,
@@ -1825,7 +1826,8 @@ export const insertVersion = internalMutation({
       tags: nextTags,
       stats: { ...skill.stats, versions: skill.stats.versions + 1 },
       softDeletedAt: undefined,
-      moderationStatus: skill.moderationStatus ?? 'active',
+      moderationStatus: 'hidden',
+      moderationReason: 'pending.scan',
       moderationFlags: moderationFlags.length ? moderationFlags : undefined,
       updatedAt: now,
     })
