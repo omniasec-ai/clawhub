@@ -597,10 +597,11 @@ async function usersPostRouterV1Handler(ctx: ActionCtx, request: Request) {
   }
 
   try {
+    const validRole = role as 'admin' | 'moderator' | 'user';
     const result = await ctx.runMutation(internal.users.setRoleInternal, {
       actorUserId,
       targetUserId,
-      role,
+      role: validRole,
     })
     return json({ ok: true, role: result.role ?? role }, 200, rate.headers)
   } catch (error) {
