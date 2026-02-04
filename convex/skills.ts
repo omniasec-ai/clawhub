@@ -1027,15 +1027,15 @@ export const listPublicPage = query({
     }
 
     const index = sortToIndex(sort)
-    const page = await ctx.db
+    const { page, isDone, continueCursor } = await ctx.db
       .query('skills')
       .withIndex(index, (q) => q)
       .order('desc')
-      .take(Math.min(limit * 5, MAX_LIST_TAKE))
+      .paginate({ cursor: args.cursor ?? null, numItems: limit })
 
-    const filtered = page.filter((skill) => !skill.softDeletedAt).slice(0, limit)
+    const filtered = page.filter((skill) => !skill.softDeletedAt)
     const items = await buildPublicSkillEntries(ctx, filtered)
-    return { items, nextCursor: null }
+    return { items, nextCursor: isDone ? null : continueCursor }
   },
 })
 

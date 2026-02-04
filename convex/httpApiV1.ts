@@ -196,7 +196,7 @@ async function listSkillsV1Handler(ctx: ActionCtx, request: Request) {
   const limit = toOptionalNumber(url.searchParams.get('limit'))
   const rawCursor = url.searchParams.get('cursor')?.trim() || undefined
   const sort = parseListSort(url.searchParams.get('sort'))
-  const cursor = sort === 'updated' ? rawCursor : undefined
+  const cursor = sort === 'trending' ? undefined : rawCursor
 
   const result = (await ctx.runQuery(api.skills.listPublicPage, {
     limit,
