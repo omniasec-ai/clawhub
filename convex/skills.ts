@@ -596,6 +596,23 @@ export const getSkillBySlugInternal = internalQuery({
   },
 })
 
+export const getSkillByIdInternal = internalQuery({
+  args: { skillId: v.id('skills') },
+  handler: async (ctx, args) => {
+    return ctx.db.get(args.skillId)
+  },
+})
+
+export const listVersionsInternal = internalQuery({
+  args: { skillId: v.id('skills') },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query('skillVersions')
+      .withIndex('by_skill', (q) => q.eq('skillId', args.skillId))
+      .collect()
+  },
+})
+
 export const list = query({
   args: {
     batch: v.optional(v.string()),

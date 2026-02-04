@@ -46,6 +46,21 @@ export const scanWithVirusTotal = internalAction({
       return
     }
 
+    // Fetch skill and owner info for _meta.json
+    const skill = await ctx.runQuery(internal.skills.getSkillByIdInternal, {
+      skillId: version.skillId,
+    })
+    const owner = skill
+      ? await ctx.runQuery(internal.users.getByIdInternal, {
+        userId: skill.ownerUserId,
+      })
+      : null
+    const versions = skill
+      ? await ctx.runQuery(internal.skills.listVersionsInternal, {
+        skillId: skill._id,
+      })
+      : []
+
     // Build the ZIP in memory with deterministic settings 
     // Sort files alphabetically by path for consistent order
     const sortedFiles = [...version.files].sort((a, b) => a.path.localeCompare(b.path))
@@ -64,6 +79,30 @@ export const scanWithVirusTotal = internalAction({
       }
     }
 
+    // Add _meta.json to the ZIP
+    if (skill) {
+      const metaFile = {
+        owner: owner?.handle || owner?.displayName || 'unknown',
+        slug: skill.slug,
+        displayName: skill.displayName,
+        latest: {
+          version: version.version,
+          publishedAt: version.createdAt,
+          commit: null,
+        },
+        history: versions
+          .filter((v) => v.version !== version.version)
+          .map((v) => ({
+            version: v.version,
+            publishedAt: v.createdAt,
+            commit: null,
+          }))
+          .sort((a, b) => b.publishedAt - a.publishedAt),
+      }
+      const metaContent = new TextEncoder().encode(JSON.stringify(metaFile, null, 2))
+      zipData['_meta.json'] = [metaContent, { mtime: fixedDate }]
+    }
+
     if (Object.keys(zipData).length === 0) {
       console.warn(`No files found for version ${args.versionId}, skipping scan`)
       return
@@ -73,7 +112,7 @@ export const scanWithVirusTotal = internalAction({
     const zipped = zipSync(zipData, { level: 6 })
     const zipArray = Uint8Array.from(zipped)
 
-    // Calculate SHA-256 of the ZIP
+    // Calculate SHA-256 of the ZIP (this hash includes _meta.json)
     const hashBuffer = await crypto.subtle.digest('SHA-256', zipArray)
     const sha256hash = Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, '0'))
