@@ -127,11 +127,11 @@ export async function publishVersionForUser(
     changelogSource === 'user'
       ? Promise.resolve(suppliedChangelog)
       : generateChangelogForPublish(ctx, {
-          slug,
-          version,
-          readmeText,
-          files: safeFiles.map((file) => ({ path: file.path, sha256: file.sha256 })),
-        })
+        slug,
+        version,
+        readmeText,
+        files: safeFiles.map((file) => ({ path: file.path, sha256: file.sha256 })),
+      })
 
   const embeddingPromise = generateEmbedding(embeddingText)
 
@@ -154,9 +154,9 @@ export async function publishVersionForUser(
     fingerprint,
     forkOf: args.forkOf
       ? {
-          slug: args.forkOf.slug.trim().toLowerCase(),
-          version: args.forkOf.version?.trim() || undefined,
-        }
+        slug: args.forkOf.slug.trim().toLowerCase(),
+        version: args.forkOf.version?.trim() || undefined,
+      }
       : undefined,
     files: safeFiles.map((file) => ({
       ...file,
@@ -189,7 +189,7 @@ export async function publishVersionForUser(
     })
 
   // Schedule VirusTotal scan for new skills (if VT_API_KEY is configured)
-  void ctx.scheduler
+  await ctx.scheduler
     .runAfter(0, internal.vt.scanWithVirusTotal, {
       versionId: publishResult.versionId,
     })
