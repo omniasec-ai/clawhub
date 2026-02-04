@@ -40,11 +40,15 @@ function VirusTotalIcon({ className }: { className?: string }) {
 }
 
 function getScanStatusInfo(status: string) {
-  switch (status) {
+  switch (status.toLowerCase()) {
+    case 'benign':
+      return { label: 'Undetected', className: 'scan-status-clean' }
     case 'clean':
       return { label: 'Clean', className: 'scan-status-clean' }
     case 'malicious':
       return { label: 'Malicious', className: 'scan-status-malicious' }
+    case 'suspicious':
+      return { label: 'Suspicious', className: 'scan-status-suspicious' }
     case 'pending':
       return { label: 'Pending', className: 'scan-status-pending' }
     case 'error':

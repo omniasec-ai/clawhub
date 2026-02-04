@@ -1976,6 +1976,22 @@ code {
   color: #fca5a5;
 }
 
+.scan-status-suspicious {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+[data-theme="dark"] .scan-status-suspicious {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
 .scan-status-pending {
   background: rgba(240, 196, 106, 0.25);
   color: #8a5b14;
