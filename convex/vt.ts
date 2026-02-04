@@ -3,6 +3,7 @@ import { zipSync } from 'fflate'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 
+<<<<<<< HEAD
 type VTAIResult = {
   category: string
   verdict: string
@@ -25,6 +26,8 @@ type VTFileResponse = {
   }
 }
 
+=======
+>>>>>>> b952099 (feat(vt): implement VirusTotal scan for skill versions and schedule scan on publish)
 export const scanWithVirusTotal = internalAction({
   args: {
     versionId: v.id('skillVersions'),
@@ -46,6 +49,7 @@ export const scanWithVirusTotal = internalAction({
       return
     }
 
+<<<<<<< HEAD
     // Fetch skill and owner info for _meta.json
     const skill = await ctx.runQuery(internal.skills.getSkillByIdInternal, {
       skillId: version.skillId,
@@ -103,11 +107,23 @@ export const scanWithVirusTotal = internalAction({
       zipData['_meta.json'] = [metaContent, { mtime: fixedDate }]
     }
 
+=======
+    // Build the ZIP in memory (replicating downloads.ts logic)
+    const zipData: Record<string, Uint8Array> = {}
+    for (const file of version.files) {
+      const content = await ctx.storage.get(file.storageId)
+      if (content) {
+        zipData[file.path] = new Uint8Array(await content.arrayBuffer())
+      }
+    }
+
+>>>>>>> b952099 (feat(vt): implement VirusTotal scan for skill versions and schedule scan on publish)
     if (Object.keys(zipData).length === 0) {
       console.warn(`No files found for version ${args.versionId}, skipping scan`)
       return
     }
 
+<<<<<<< HEAD
     // Use fixed compression level (same as downloads.ts)
     const zipped = zipSync(zipData, { level: 6 })
     const zipArray = Uint8Array.from(zipped)
@@ -177,6 +193,14 @@ export const scanWithVirusTotal = internalAction({
 
     // Upload file to VirusTotal (v3 API)
     const formData = new FormData()
+=======
+    const zipped = zipSync(zipData)
+
+    // Send to VirusTotal (v3 API)
+    const formData = new FormData()
+    // Convert to standard Uint8Array (same approach as downloads.ts)
+    const zipArray = Uint8Array.from(zipped)
+>>>>>>> b952099 (feat(vt): implement VirusTotal scan for skill versions and schedule scan on publish)
     const blob = new Blob([zipArray], { type: 'application/zip' })
     formData.append('file', blob, 'skill.zip')
 
@@ -191,6 +215,7 @@ export const scanWithVirusTotal = internalAction({
 
       if (!response.ok) {
         const error = await response.text()
+<<<<<<< HEAD
         console.error('VirusTotal upload error:', error)
         await ctx.runMutation(internal.skills.updateVersionScanResultsInternal, {
           versionId: args.versionId,
@@ -201,10 +226,14 @@ export const scanWithVirusTotal = internalAction({
             },
           },
         })
+=======
+        console.error('VirusTotal API error:', error)
+>>>>>>> b952099 (feat(vt): implement VirusTotal scan for skill versions and schedule scan on publish)
         return
       }
 
       const result = (await response.json()) as { data: { id: string } }
+<<<<<<< HEAD
       console.log(
         `Successfully uploaded version ${args.versionId} to VT. Hash: ${sha256hash}. Analysis ID: ${result.data.id}`
       )
@@ -266,3 +295,11 @@ async function checkExistingFile(
 
   return (await response.json()) as VTFileResponse
 }
+=======
+      console.log(`Successfully sent version ${args.versionId} to VT. Analysis ID: ${result.data.id}`)
+    } catch (error) {
+      console.error('Failed to send to VirusTotal:', error)
+    }
+  },
+})
+>>>>>>> b952099 (feat(vt): implement VirusTotal scan for skill versions and schedule scan on publish)
