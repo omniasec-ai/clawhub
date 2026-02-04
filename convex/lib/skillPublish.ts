@@ -170,6 +170,12 @@ export async function publishVersionForUser(
     embedding,
   })) as PublishResult
 
+  await ctx.scheduler.runAfter(0, internal.malware.scanSkillVersion, {
+    skillId: publishResult.skillId,
+    versionId: publishResult.versionId,
+    files: safeFiles,
+  })
+
   const owner = (await ctx.runQuery(internal.users.getByIdInternal, {
     userId,
   })) as Doc<'users'> | null

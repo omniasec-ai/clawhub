@@ -9,7 +9,7 @@ import { assertAdmin, assertModerator, requireUser, requireUserFromAction } from
 import { getSkillBadgeMap, getSkillBadgeMaps, isSkillHighlighted } from './lib/badges'
 import { generateChangelogPreview as buildChangelogPreview } from './lib/changelog'
 import { buildTrendingLeaderboard } from './lib/leaderboards'
-import { deriveModerationFlags } from './lib/moderation'
+import { deriveModerationFlags, VT_FLAGS } from './lib/moderation'
 import { toPublicSkill, toPublicUser } from './lib/public'
 import {
   fetchText,
@@ -1742,6 +1742,7 @@ export const insertVersion = internalMutation({
         parsed: args.parsed,
         files: args.files,
       })
+      moderationFlags.push(VT_FLAGS.PENDING)
       const skillId = await ctx.db.insert('skills', {
         slug: args.slug,
         displayName: args.displayName,
@@ -1817,6 +1818,7 @@ export const insertVersion = internalMutation({
       parsed: args.parsed,
       files: args.files,
     })
+    moderationFlags.push(VT_FLAGS.PENDING)
 
     await ctx.db.patch(skill._id, {
       displayName: args.displayName,

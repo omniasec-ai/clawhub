@@ -16,6 +16,12 @@ const FLAG_RULES: Array<{ flag: string; pattern: RegExp }> = [
   { flag: 'suspicious.url_shortener', pattern: /(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd)/i },
 ]
 
+export const VT_FLAGS = {
+  PENDING: 'vt.pending',
+  MALICIOUS: 'vt.malicious',
+  SUSPICIOUS: 'vt.suspicious',
+}
+
 export function deriveModerationFlags({
   skill,
   parsed,
@@ -32,7 +38,7 @@ export function deriveModerationFlags({
     JSON.stringify(parsed?.frontmatter ?? {}),
     JSON.stringify(parsed?.metadata ?? {}),
     JSON.stringify((parsed as { moltbot?: unknown } | undefined)?.moltbot ?? {}),
-    ...files.map((file) => file.path),
+    ...files.map((file: { path: string }) => file.path),
   ]
     .filter(Boolean)
     .join('\n')
