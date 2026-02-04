@@ -622,63 +622,43 @@ async function usersPostRouterV1Handler(ctx: ActionCtx, request: Request) {
 
 export const usersPostRouterV1Http = httpAction(usersPostRouterV1Handler)
 
-async function moderationPostRouterV1Handler(ctx: ActionCtx, request: Request) {
-  const rate = await applyRateLimit(ctx, request, 'write')
+async function usersListV1Handler(ctx: ActionCtx, request: Request) {
+  const rate = await applyRateLimit(ctx, request, 'read')
   if (!rate.ok) return rate.response
 
-  const segments = getPathSegments(request, '/api/v1/moderation/')
-  if (segments.length !== 1 || segments[0] !== 'scan-result') {
-    return text('Not found', 404, rate.headers)
-  }
+  const url = new URL(request.url)
+  const limitRaw = toOptionalNumber(url.searchParams.get('limit'))
+  const query = url.searchParams.get('q') ?? url.searchParams.get('query') ?? ''
 
+  let actorUserId: Id<'users'>
   try {
-    // Only moderators can call this
-    await requireApiTokenUser(ctx, request, { moderator: true })
+    const auth = await requireApiTokenUser(ctx, request)
+    actorUserId = auth.userId
   } catch {
     return text('Unauthorized', 401, rate.headers)
   }
 
-  let payload: Record<string, unknown>
+  const limit = Math.min(Math.max(limitRaw ?? 20, 1), 200)
   try {
-    payload = (await request.json()) as Record<string, unknown>
-  } catch {
-    return text('Invalid JSON', 400, rate.headers)
-  }
-
-  const sha256hash = typeof payload.sha256hash === 'string' ? payload.sha256hash : ''
-  const scanner = typeof payload.scanner === 'string' ? payload.scanner : ''
-  const status = typeof payload.status === 'string' ? payload.status : ''
-  const url = typeof payload.url === 'string' ? payload.url : undefined
-  const metadata = payload.metadata
-  const moderationStatus =
-    payload.moderationStatus === 'active' || payload.moderationStatus === 'hidden'
-      ? payload.moderationStatus
-      : undefined
-
-  if (!sha256hash || !scanner || !status) {
-    return text('Missing required fields: sha256hash, scanner, status', 400, rate.headers)
-  }
-
-  try {
-    const result = await ctx.runMutation(internal.skills.approveSkillByHashInternal, {
-      sha256hash,
-      scanner,
-      status,
-      url,
-      metadata,
-      moderationStatus,
+    const result = await ctx.runQuery(internal.users.searchInternal, {
+      actorUserId,
+      query,
+      limit,
     })
     return json(result, 200, rate.headers)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Update failed'
-    if (message.toLowerCase().includes('not found')) {
-      return text(message, 404, rate.headers)
+    const message = error instanceof Error ? error.message : 'User search failed'
+    if (message.toLowerCase().includes('forbidden')) {
+      return text('Forbidden', 403, rate.headers)
+    }
+    if (message.toLowerCase().includes('unauthorized')) {
+      return text('Unauthorized', 401, rate.headers)
     }
     return text(message, 400, rate.headers)
   }
 }
 
-export const moderationPostRouterV1Http = httpAction(moderationPostRouterV1Handler)
+export const usersListV1Http = httpAction(usersListV1Handler)
 
 async function parseMultipartPublish(
   ctx: ActionCtx,
@@ -1324,4 +1304,5 @@ export const __handlers = {
   starsDeleteRouterV1Handler,
   whoamiV1Handler,
   usersPostRouterV1Handler,
+  usersListV1Handler,
 }

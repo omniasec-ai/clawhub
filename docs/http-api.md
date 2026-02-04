@@ -189,6 +189,33 @@ Response:
 { "ok": true, "role": "moderator" }
 ```
 
+### `GET /api/v1/users`
+
+List or search users (admin only).
+
+Query params:
+
+- `q` (optional): search query
+- `query` (optional): alias for `q`
+- `limit` (optional): max results (default 20, max 200)
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "userId": "users_...",
+      "handle": "user_handle",
+      "displayName": "User",
+      "name": "User",
+      "role": "moderator"
+    }
+  ],
+  "total": 1
+}
+```
+
 ### `POST /api/v1/stars/{slug}` / `DELETE /api/v1/stars/{slug}`
 
 Add/remove a star (highlights). Both endpoints are idempotent.

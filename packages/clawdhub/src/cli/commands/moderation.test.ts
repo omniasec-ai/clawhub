@@ -75,6 +75,56 @@ describe('cmdBanUser', () => {
       expect.anything(),
     )
   })
+
+  it('resolves user via fuzzy search', async () => {
+    mockApiRequest
+      .mockResolvedValueOnce({
+        items: [
+          {
+            userId: 'users_123',
+            handle: 'moonshine-100rze',
+            displayName: null,
+            name: null,
+            role: 'user',
+          },
+        ],
+        total: 1,
+      })
+      .mockResolvedValueOnce({ ok: true, alreadyBanned: false, deletedSkills: 0 })
+    await cmdBanUser(makeOpts(), 'moonshine-100rze', { yes: true, fuzzy: true }, false)
+    expect(mockApiRequest).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({
+        method: 'GET',
+        path: expect.stringContaining('/api/v1/users?'),
+      }),
+      expect.anything(),
+    )
+    expect(mockApiRequest).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({
+        method: 'POST',
+        path: '/api/v1/users/ban',
+        body: { userId: 'users_123' },
+      }),
+      expect.anything(),
+    )
+  })
+
+  it('fails fuzzy search with multiple matches when not interactive', async () => {
+    mockApiRequest.mockResolvedValueOnce({
+      items: [
+        { userId: 'users_1', handle: 'moonshine-100rze', displayName: null, name: null, role: null },
+        { userId: 'users_2', handle: 'moonshine-100rze2', displayName: null, name: null, role: null },
+      ],
+      total: 2,
+    })
+    await expect(
+      cmdBanUser(makeOpts(), 'moonshine', { yes: true, fuzzy: true }, false),
+    ).rejects.toThrow(/multiple users matched/i)
+  })
 })
 
 describe('cmdSetRole', () => {

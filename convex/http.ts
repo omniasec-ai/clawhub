@@ -30,6 +30,7 @@ import {
   starsDeleteRouterV1Http,
   starsPostRouterV1Http,
   usersPostRouterV1Http,
+  usersListV1Http,
   whoamiV1Http,
 } from './httpApiV1'
 
@@ -110,9 +111,9 @@ http.route({
 })
 
 http.route({
-  pathPrefix: '/api/v1/moderation/',
-  method: 'POST',
-  handler: moderationPostRouterV1Http,
+  path: ApiRoutes.users,
+  method: 'GET',
+  handler: usersListV1Http,
 })
 
 http.route({

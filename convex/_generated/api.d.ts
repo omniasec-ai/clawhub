@@ -43,6 +43,7 @@ import type * as lib_skills from "../lib/skills.js";
 import type * as lib_soulChangelog from "../lib/soulChangelog.js";
 import type * as lib_soulPublish from "../lib/soulPublish.js";
 import type * as lib_tokens from "../lib/tokens.js";
+import type * as lib_userSearch from "../lib/userSearch.js";
 import type * as lib_webhooks from "../lib/webhooks.js";
 import type * as maintenance from "../maintenance.js";
 import type * as rateLimits from "../rateLimits.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   "lib/soulChangelog": typeof lib_soulChangelog;
   "lib/soulPublish": typeof lib_soulPublish;
   "lib/tokens": typeof lib_tokens;
+  "lib/userSearch": typeof lib_userSearch;
   "lib/webhooks": typeof lib_webhooks;
   maintenance: typeof maintenance;
   rateLimits: typeof rateLimits;

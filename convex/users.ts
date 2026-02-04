@@ -6,6 +6,7 @@ import type { MutationCtx } from './_generated/server'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { assertAdmin, assertModerator, requireUser } from './lib/access'
 import { toPublicUser } from './lib/public'
+import { buildUserSearchResults } from './lib/userSearch'
 
 const DEFAULT_ROLE = 'user'
 const ADMIN_HANDLE = 'steipete'
@@ -18,6 +19,31 @@ export const getById = query({
 export const getByIdInternal = internalQuery({
   args: { userId: v.id('users') },
   handler: async (ctx, args) => ctx.db.get(args.userId),
+})
+
+export const searchInternal = internalQuery({
+  args: {
+    actorUserId: v.id('users'),
+    query: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await ctx.db.get(args.actorUserId)
+    if (!actor || actor.deletedAt) throw new Error('Unauthorized')
+    assertAdmin(actor)
+
+    const limit = Math.min(Math.max(args.limit ?? 20, 1), 200)
+    const users = await ctx.db.query('users').order('desc').collect()
+    const result = buildUserSearchResults(users, args.query)
+    const items = result.items.slice(0, limit).map((user) => ({
+      userId: user._id,
+      handle: user.handle ?? null,
+      displayName: user.displayName ?? null,
+      name: user.name ?? null,
+      role: user.role ?? null,
+    }))
+    return { items, total: result.total }
+  },
 })
 
 export const updateGithubMetaInternal = internalMutation({
@@ -105,23 +131,8 @@ export const list = query({
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 200)
     const query = args.search?.trim().toLowerCase()
     const users = await ctx.db.query('users').order('desc').collect()
-    const filtered = query
-      ? users.filter((entry) => {
-          const haystack = [
-            entry.handle,
-            entry.name,
-            entry.displayName,
-            entry.email,
-            entry.role,
-            String(entry._id),
-          ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-          return haystack.includes(query)
-        })
-      : users
-    return { items: filtered.slice(0, limit), total: filtered.length }
+    const result = buildUserSearchResults(users, query)
+    return { items: result.items.slice(0, limit), total: result.total }
   },
 })
 
