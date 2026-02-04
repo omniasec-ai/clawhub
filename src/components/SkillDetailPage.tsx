@@ -12,6 +12,93 @@ import { canManageSkill, isModerator } from '../lib/roles'
 import { useAuthStatus } from '../lib/useAuthStatus'
 import { SkillDiffCard } from './SkillDiffCard'
 
+type ScanResult = {
+  status: string
+  url?: string
+  metadata?: unknown
+}
+
+type ScanResults = Record<string, ScanResult>
+
+function VirusTotalIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="1em"
+      height="1em"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 100 89"
+      aria-label="VirusTotal"
+    >
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M45.292 44.5 0 89h100V0H0l45.292 44.5zM90 80H22l35.987-35.2L22 9h68v71z"
+      />
+    </svg>
+  )
+}
+
+function getScanStatusInfo(status: string) {
+  switch (status) {
+    case 'clean':
+      return { label: 'Clean', className: 'scan-status-clean' }
+    case 'malicious':
+      return { label: 'Malicious', className: 'scan-status-malicious' }
+    case 'pending':
+      return { label: 'Pending', className: 'scan-status-pending' }
+    case 'error':
+    case 'failed':
+      return { label: 'Error', className: 'scan-status-error' }
+    default:
+      return { label: status, className: 'scan-status-unknown' }
+  }
+}
+
+function ScanResultsBadge({ scanResults }: { scanResults: ScanResults }) {
+  const entries = Object.entries(scanResults)
+  if (entries.length === 0) return null
+
+  return (
+    <div className="scan-results-panel">
+      <div className="scan-results-title">Security Scans</div>
+      <div className="scan-results-list">
+        {entries.map(([scanner, result]) => {
+          const statusInfo = getScanStatusInfo(result.status)
+          const isVT = scanner.toLowerCase() === 'vt' || scanner.toLowerCase() === 'virustotal'
+          return (
+            <div key={scanner} className="scan-result-row">
+              <div className="scan-result-scanner">
+                {isVT ? (
+                  <VirusTotalIcon className="scan-result-icon scan-result-icon-vt" />
+                ) : (
+                  <span className="scan-result-icon">🔍</span>
+                )}
+                <span className="scan-result-scanner-name">
+                  {isVT ? 'VirusTotal' : scanner}
+                </span>
+              </div>
+              <div className={`scan-result-status ${statusInfo.className}`}>
+                {statusInfo.label}
+              </div>
+              {result.url ? (
+                <a
+                  href={result.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="scan-result-link"
+                >
+                  View report →
+                </a>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 type SkillDetailPageProps = {
   slug: string
   canonicalOwner?: string
@@ -118,8 +205,8 @@ export function SkillDetailPage({
   const ownerParam = ownerHandle ?? (owner?._id ? String(owner._id) : null)
   const wantsCanonicalRedirect = Boolean(
     ownerParam &&
-      (redirectToCanonical ||
-        (typeof canonicalOwner === 'string' && canonicalOwner && canonicalOwner !== ownerParam)),
+    (redirectToCanonical ||
+      (typeof canonicalOwner === 'string' && canonicalOwner && canonicalOwner !== ownerParam)),
   )
 
   const forkOf = result?.forkOf ?? null
@@ -183,12 +270,12 @@ export function SkillDetailPage({
   const cliHelp = clawdis?.cliHelp
   const hasRuntimeRequirements = Boolean(
     clawdis?.emoji ||
-      osLabels.length ||
-      requirements?.bins?.length ||
-      requirements?.anyBins?.length ||
-      requirements?.env?.length ||
-      requirements?.config?.length ||
-      clawdis?.primaryEnv,
+    osLabels.length ||
+    requirements?.bins?.length ||
+    requirements?.anyBins?.length ||
+    requirements?.env?.length ||
+    requirements?.config?.length ||
+    clawdis?.primaryEnv,
   )
   const hasInstallSpecs = installSpecs.length > 0
   const hasPluginBundle = Boolean(nixSnippet || configRequirements || cliHelp)
@@ -360,6 +447,9 @@ export function SkillDetailPage({
                   <div className="section-subtitle" style={{ margin: '6px 0 0' }}>
                     Reports require a reason. Abuse may result in a ban.
                   </div>
+                ) : null}
+                {latestVersion?.scanResults ? (
+                  <ScanResultsBadge scanResults={latestVersion.scanResults as ScanResults} />
                 ) : null}
               </div>
               <div className="skill-hero-cta">
@@ -665,6 +755,36 @@ export function SkillDetailPage({
                         <div style={{ color: '#5c554e', whiteSpace: 'pre-wrap' }}>
                           {version.changelog}
                         </div>
+                        {version.scanResults ? (
+                          <div className="version-scan-results">
+                            {Object.entries(version.scanResults as ScanResults).map(
+                              ([scanner, result]) => {
+                                const statusInfo = getScanStatusInfo(result.status)
+                                const isVT =
+                                  scanner.toLowerCase() === 'vt' ||
+                                  scanner.toLowerCase() === 'virustotal'
+                                return (
+                                  <div key={scanner} className="version-scan-badge">
+                                    {isVT ? (
+                                      <VirusTotalIcon className="version-scan-icon version-scan-icon-vt" />
+                                    ) : null}
+                                    <span className={statusInfo.className}>{statusInfo.label}</span>
+                                    {result.url ? (
+                                      <a
+                                        href={result.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="version-scan-link"
+                                      >
+                                        ↗
+                                      </a>
+                                    ) : null}
+                                  </div>
+                                )
+                              },
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                       {!nixPlugin ? (
                         <div className="version-actions">
