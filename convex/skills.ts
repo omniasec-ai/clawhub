@@ -1130,6 +1130,86 @@ export const getVersionByIdInternal = internalQuery({
   handler: async (ctx, args) => ctx.db.get(args.versionId),
 })
 
+export const updateVersionScanResultsInternal = internalMutation({
+  args: {
+    versionId: v.id('skillVersions'),
+    sha256hash: v.optional(v.string()),
+    scanResults: v.optional(
+      v.record(
+        v.string(),
+        v.object({
+          status: v.string(),
+          url: v.optional(v.string()),
+          metadata: v.optional(v.any()),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const version = await ctx.db.get(args.versionId)
+    if (!version) return
+
+    const patch: Partial<Doc<'skillVersions'>> = {}
+    if (args.sha256hash !== undefined) {
+      patch.sha256hash = args.sha256hash
+    }
+    if (args.scanResults !== undefined) {
+      patch.scanResults = {
+        ...(version.scanResults ?? {}),
+        ...args.scanResults,
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(args.versionId, patch)
+    }
+  },
+})
+
+export const approveSkillByHashInternal = internalMutation({
+  args: {
+    sha256hash: v.string(),
+    scanner: v.string(),
+    status: v.string(),
+    url: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    moderationStatus: v.optional(v.union(v.literal('active'), v.literal('hidden'))),
+  },
+  handler: async (ctx, args) => {
+    const version = await ctx.db
+      .query('skillVersions')
+      .withIndex('by_sha256hash', (q) => q.eq('sha256hash', args.sha256hash))
+      .unique()
+
+    if (!version) throw new Error('Version not found for hash')
+
+    // Update scan results
+    const newScanResults = {
+      ...(version.scanResults ?? {}),
+      [args.scanner]: {
+        status: args.status,
+        url: args.url,
+        metadata: args.metadata,
+      },
+    }
+    await ctx.db.patch(version._id, { scanResults: newScanResults })
+
+    // If requested, update the skill's moderation status
+    if (args.moderationStatus) {
+      const skill = await ctx.db.get(version.skillId)
+      if (skill) {
+        await ctx.db.patch(skill._id, {
+          moderationStatus: args.moderationStatus,
+          moderationReason: `scanner.${args.scanner}.${args.status}`,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    return { ok: true, skillId: version.skillId, versionId: version._id }
+  },
+})
+
 export const getVersionBySkillAndVersion = query({
   args: { skillId: v.id('skills'), version: v.string() },
   handler: async (ctx, args) => {

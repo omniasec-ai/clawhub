@@ -217,10 +217,10 @@ async function listSkillsV1Handler(ctx: ActionCtx, request: Request) {
         updatedAt: item.skill.updatedAt,
         latestVersion: item.latestVersion
           ? {
-              version: item.latestVersion.version,
-              createdAt: item.latestVersion.createdAt,
-              changelog: item.latestVersion.changelog,
-            }
+            version: item.latestVersion.version,
+            createdAt: item.latestVersion.createdAt,
+            changelog: item.latestVersion.changelog,
+          }
           : null,
       }
     }),
@@ -259,18 +259,18 @@ async function skillsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
         },
         latestVersion: result.latestVersion
           ? {
-              version: result.latestVersion.version,
-              createdAt: result.latestVersion.createdAt,
-              changelog: result.latestVersion.changelog,
-            }
+            version: result.latestVersion.version,
+            createdAt: result.latestVersion.createdAt,
+            changelog: result.latestVersion.changelog,
+          }
           : null,
         owner: result.owner
           ? {
-              handle: result.owner.handle ?? null,
-              userId: result.owner._id,
-              displayName: result.owner.displayName ?? null,
-              image: result.owner.image ?? null,
-            }
+            handle: result.owner.handle ?? null,
+            userId: result.owner._id,
+            displayName: result.owner.displayName ?? null,
+            image: result.owner.image ?? null,
+          }
           : null,
       },
       200,
@@ -617,6 +617,64 @@ async function usersPostRouterV1Handler(ctx: ActionCtx, request: Request) {
 
 export const usersPostRouterV1Http = httpAction(usersPostRouterV1Handler)
 
+async function moderationPostRouterV1Handler(ctx: ActionCtx, request: Request) {
+  const rate = await applyRateLimit(ctx, request, 'write')
+  if (!rate.ok) return rate.response
+
+  const segments = getPathSegments(request, '/api/v1/moderation/')
+  if (segments.length !== 1 || segments[0] !== 'scan-result') {
+    return text('Not found', 404, rate.headers)
+  }
+
+  try {
+    // Only moderators can call this
+    await requireApiTokenUser(ctx, request, { moderator: true })
+  } catch {
+    return text('Unauthorized', 401, rate.headers)
+  }
+
+  let payload: Record<string, unknown>
+  try {
+    payload = (await request.json()) as Record<string, unknown>
+  } catch {
+    return text('Invalid JSON', 400, rate.headers)
+  }
+
+  const sha256hash = typeof payload.sha256hash === 'string' ? payload.sha256hash : ''
+  const scanner = typeof payload.scanner === 'string' ? payload.scanner : ''
+  const status = typeof payload.status === 'string' ? payload.status : ''
+  const url = typeof payload.url === 'string' ? payload.url : undefined
+  const metadata = payload.metadata
+  const moderationStatus =
+    payload.moderationStatus === 'active' || payload.moderationStatus === 'hidden'
+      ? payload.moderationStatus
+      : undefined
+
+  if (!sha256hash || !scanner || !status) {
+    return text('Missing required fields: sha256hash, scanner, status', 400, rate.headers)
+  }
+
+  try {
+    const result = await ctx.runMutation(internal.skills.approveSkillByHashInternal, {
+      sha256hash,
+      scanner,
+      status,
+      url,
+      metadata,
+      moderationStatus,
+    })
+    return json(result, 200, rate.headers)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Update failed'
+    if (message.toLowerCase().includes('not found')) {
+      return text(message, 404, rate.headers)
+    }
+    return text(message, 400, rate.headers)
+  }
+}
+
+export const moderationPostRouterV1Http = httpAction(moderationPostRouterV1Handler)
+
 async function parseMultipartPublish(
   ctx: ActionCtx,
   request: Request,
@@ -695,9 +753,9 @@ function parsePublishBody(body: unknown) {
     source: parsed.source ?? undefined,
     forkOf: parsed.forkOf
       ? {
-          slug: parsed.forkOf.slug,
-          version: parsed.forkOf.version ?? undefined,
-        }
+        slug: parsed.forkOf.slug,
+        version: parsed.forkOf.version ?? undefined,
+      }
       : undefined,
     files: parsed.files.map((file) => ({
       ...file,
@@ -927,10 +985,10 @@ async function listSoulsV1Handler(ctx: ActionCtx, request: Request) {
         updatedAt: item.soul.updatedAt,
         latestVersion: item.latestVersion
           ? {
-              version: item.latestVersion.version,
-              createdAt: item.latestVersion.createdAt,
-              changelog: item.latestVersion.changelog,
-            }
+            version: item.latestVersion.version,
+            createdAt: item.latestVersion.createdAt,
+            changelog: item.latestVersion.changelog,
+          }
           : null,
       }
     }),
@@ -969,17 +1027,17 @@ async function soulsGetRouterV1Handler(ctx: ActionCtx, request: Request) {
         },
         latestVersion: result.latestVersion
           ? {
-              version: result.latestVersion.version,
-              createdAt: result.latestVersion.createdAt,
-              changelog: result.latestVersion.changelog,
-            }
+            version: result.latestVersion.version,
+            createdAt: result.latestVersion.createdAt,
+            changelog: result.latestVersion.changelog,
+          }
           : null,
         owner: result.owner
           ? {
-              handle: result.owner.handle ?? null,
-              displayName: result.owner.displayName ?? null,
-              image: result.owner.image ?? null,
-            }
+            handle: result.owner.handle ?? null,
+            displayName: result.owner.displayName ?? null,
+            image: result.owner.image ?? null,
+          }
           : null,
       },
       200,

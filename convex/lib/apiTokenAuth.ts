@@ -9,6 +9,7 @@ type TokenAuthResult = { user: Doc<'users'>; userId: Doc<'users'>['_id'] }
 export async function requireApiTokenUser(
   ctx: ActionCtx,
   request: Request,
+  options?: { moderator?: boolean; admin?: boolean },
 ): Promise<TokenAuthResult> {
   const header = request.headers.get('authorization') ?? request.headers.get('Authorization')
   const token = parseBearerToken(header)
@@ -22,6 +23,13 @@ export async function requireApiTokenUser(
     tokenId: apiToken._id,
   })
   if (!user || user.deletedAt) throw new ConvexError('Unauthorized')
+
+  if (options?.admin && user.role !== 'admin') {
+    throw new ConvexError('Forbidden')
+  }
+  if (options?.moderator && user.role !== 'moderator' && user.role !== 'admin') {
+    throw new ConvexError('Forbidden')
+  }
 
   await ctx.runMutation(internal.tokens.touchInternal, { tokenId: apiToken._id })
   return { user, userId: user._id }

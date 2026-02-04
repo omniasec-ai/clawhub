@@ -16,6 +16,7 @@ import {
 import {
   listSkillsV1Http,
   listSoulsV1Http,
+  moderationPostRouterV1Http,
   publishSkillV1Http,
   publishSoulV1Http,
   resolveSkillVersionV1Http,
@@ -106,6 +107,12 @@ http.route({
   pathPrefix: `${ApiRoutes.users}/`,
   method: 'POST',
   handler: usersPostRouterV1Http,
+})
+
+http.route({
+  pathPrefix: '/api/v1/moderation/',
+  method: 'POST',
+  handler: moderationPostRouterV1Http,
 })
 
 http.route({

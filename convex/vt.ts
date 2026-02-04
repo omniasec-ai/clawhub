@@ -39,11 +39,23 @@ export const scanWithVirusTotal = internalAction({
     }
 
     const zipped = zipSync(zipData)
+    const zipArray = Uint8Array.from(zipped)
+
+    // Calculate SHA-256 of the ZIP
+    const hashBuffer = await crypto.subtle.digest('SHA-256', zipArray)
+    const sha256hash = Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    // Update version with hash and initial scan status
+    await ctx.runMutation(internal.skills.updateVersionScanResultsInternal, {
+      versionId: args.versionId,
+      sha256hash,
+      scanResults: { vt: { status: 'pending' } },
+    })
 
     // Send to VirusTotal (v3 API)
     const formData = new FormData()
-    // Convert to standard Uint8Array (same approach as downloads.ts)
-    const zipArray = Uint8Array.from(zipped)
     const blob = new Blob([zipArray], { type: 'application/zip' })
     formData.append('file', blob, 'skill.zip')
 
@@ -59,13 +71,23 @@ export const scanWithVirusTotal = internalAction({
       if (!response.ok) {
         const error = await response.text()
         console.error('VirusTotal API error:', error)
+        await ctx.runMutation(internal.skills.updateVersionScanResultsInternal, {
+          versionId: args.versionId,
+          scanResults: { vt: { status: 'error' } },
+        })
         return
       }
 
       const result = (await response.json()) as { data: { id: string } }
-      console.log(`Successfully sent version ${args.versionId} to VT. Analysis ID: ${result.data.id}`)
+      console.log(
+        `Successfully sent version ${args.versionId} to VT. Hash: ${sha256hash}. Analysis ID: ${result.data.id}`,
+      )
     } catch (error) {
       console.error('Failed to send to VirusTotal:', error)
+      await ctx.runMutation(internal.skills.updateVersionScanResultsInternal, {
+        versionId: args.versionId,
+        scanResults: { vt: { status: 'failed' } },
+      })
     }
   },
 })
